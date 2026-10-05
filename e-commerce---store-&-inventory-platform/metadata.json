@@ -1,0 +1,6 @@
+{
+  "name": "E-Commerce - Store & Inventory Platform",
+  "description": "Fullstack e-commerce platform with real-time analytics, push notifications, direct checkout, wishlist, inventory management, and order tracking.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

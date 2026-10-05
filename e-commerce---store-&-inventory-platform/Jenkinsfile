@@ -1,0 +1,78 @@
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME     = 'e-commerce'
+        DOCKER_IMAGE = "${APP_NAME}:${BUILD_NUMBER}"
+        NODE_ENV     = 'production'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source repository...'
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing node dependencies...'
+                sh 'npm ci || npm install'
+            }
+        }
+
+        stage('Lint & Quality Audit') {
+            steps {
+                echo 'Executing TypeScript type-safety audit...'
+                sh 'npm run lint'
+            }
+        }
+
+        stage('Build Production Assets') {
+            steps {
+                echo 'Compiling frontend Vite distribution...'
+                sh 'npm run build'
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                echo "Building Docker container image: ${DOCKER_IMAGE}..."
+                sh "docker build -t ${DOCKER_IMAGE} -t ${APP_NAME}:latest ."
+            }
+        }
+
+        stage('Container Health Test') {
+            steps {
+                echo 'Running smoke verification container...'
+                sh """
+                    docker run -d --name ${APP_NAME}-test -p 3001:3000 ${DOCKER_IMAGE}
+                    sleep 5
+                    curl -f http://localhost:3001/api/products || exit 1
+                    docker stop ${APP_NAME}-test
+                    docker rm ${APP_NAME}-test
+                """
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo "Deploying ${DOCKER_IMAGE} via Docker Compose..."
+                sh 'docker compose up -d app'
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline completed successfully! E-Commerce app is deployed.'
+        }
+        failure {
+            echo 'Pipeline encountered an error. Check console logs.'
+        }
+    }
+}
